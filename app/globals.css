@@ -1,1 +1,41 @@
 @import "tailwindcss";
+
+/* Design tokens from DESIGN.md section 2 */
+@theme {
+  --color-pop-red: #d7261e;
+  --color-comic-yellow: #f6b41f;
+  --color-halftone-orange: #e9822a;
+  --color-ink: #111111;
+  --color-paper: #ffffff;
+  --color-cream: #fff3d1;
+  --color-deep-red: #9c1a14;
+  --color-muted-gray: #6b6b6b;
+  --color-light-gray: #d9d9d9;
+  --color-error-tint: #fde3df;
+
+  --font-display: "Secular One", system-ui, sans-serif;
+  --font-body: "Rubik", system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-cream);
+  /* Subtle orange halftone dots across the full screen width */
+  background-image: radial-gradient(
+    circle,
+    rgb(233 130 42 / 0.18) 1.5px,
+    transparent 1.6px
+  );
+  background-size: 14px 14px;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+/* Orange halftone decoration in the joke bubble's bottom-left corner */
+.halftone-corner {
+  background-image: radial-gradient(
+    circle,
+    rgb(233 130 42 / 0.75) 1.5px,
+    transparent 1.7px
+  );
+  background-size: 8px 8px;
+}
