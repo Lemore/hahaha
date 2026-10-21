@@ -270,3 +270,12 @@ Request  (application/json)
 - [Vercel – Hobby plan](https://vercel.com/docs/plans/hobby): מגבלות התוכנית החינמית ומשך ריצה של Functions.
 - [Vercel – Fair use guidelines](https://vercel.com/docs/limits/fair-use-policy): הגדרת שימוש מסחרי.
 - [Vercel – Sensitive environment variables](https://vercel.com/docs/environment-variables/sensitive-environment-variables): שמירת סודות.
+
+---
+
+## החלטות מרכזיות (ADRs)
+
+### ADR-1: שמירת קובצי ה-Build ב-Service Worker
+**הקשר:** שמות קובצי ה-JS וה-CSS של Next.js, וכתובות האיור המותאם (`/_next/image`), משתנים בכל Build. לכן אי אפשר לרשום אותם מראש ב-`sw.js`, ובלעדיהם המעטפת לא נטענת בלי חיבור.
+**החלטה:** בזמן `install`, ה-Service Worker מוריד את `/`, מחלץ מה-HTML את כל הכתובות שמתחילות ב-`/_next/static/` וב-`/_next/image?`, ושומר אותן ב-Cache. בלי חיבור, ההתאמה ב-Cache מתעלמת מכותרת `Vary`, כי האיור המותאם משתנה לפי כותרת `Accept`.
+**השלכות:** אין צורך בספריית PWA או בשלב Build נוסף. המעטפת המלאה נשמרת כבר בביקור הראשון. כל גדלי האיור שב-`srcset` נשמרים (כ-2MB). אם מבנה ה-HTML של Next.js ישתנה, צריך לבדוק שהחילוץ עדיין עובד.
