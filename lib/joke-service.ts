@@ -16,7 +16,11 @@ const INSTRUCTIONS = [
 
 const ANY_TOPIC = "בדיחה כלשהי, על כל נושא שתבחר";
 
-export async function generateJoke(topic: string): Promise<string> {
+const REFUSAL_MARKER = "NO_JOKE";
+
+// Returns the joke, or null if the model refused or returned no text.
+// Throws on OpenAI errors and timeouts.
+export async function generateJoke(topic: string): Promise<string | null> {
   const model = process.env.OPENAI_MODEL;
   if (!model) throw new Error("OPENAI_MODEL is not set");
 
@@ -27,5 +31,8 @@ export async function generateJoke(topic: string): Promise<string> {
     input: [{ role: "user", content: topic || ANY_TOPIC }],
   });
 
-  return response.output_text.trim();
+  // Structured refusals are not part of output_text, so they arrive as empty text.
+  const text = response.output_text.trim();
+  if (!text || text.includes(REFUSAL_MARKER)) return null;
+  return text;
 }

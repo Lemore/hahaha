@@ -5,39 +5,57 @@ import { useRef, useState, type FormEvent } from "react";
 import { UI_TEXT } from "@/lib/ui-text";
 import { MAX_TOPIC_LENGTH } from "@/lib/validation";
 
-type Status = "idle" | "loading" | "success";
+type Status = "idle" | "loading" | "success" | "error";
+type ErrorKind = "offline" | "noJoke" | "general";
 
 export default function Home() {
   const [topic, setTopic] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [joke, setJoke] = useState("");
+  const [errorKind, setErrorKind] = useState<ErrorKind>("general");
   // Blocks repeat submits immediately, before the disabled button re-renders.
   const inFlight = useRef(false);
+
+  function showError(kind: ErrorKind) {
+    setJoke("");
+    setErrorKind(kind);
+    setStatus("error");
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
+    if (!navigator.onLine) {
+      showError("offline");
+      return;
+    }
     inFlight.current = true;
     setStatus("loading");
 
     try {
-      const response = await fetch("/api/joke", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topic.trim() }),
-      });
-      const data = await response.json();
-      if (response.ok && typeof data.joke === "string") {
+      let response: Response;
+      try {
+        response = await fetch("/api/joke", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ topic: topic.trim() }),
+        });
+      } catch {
+        // fetch only throws on network failure, so treat it as offline.
+        showError("offline");
+        return;
+      }
+
+      // Non-JSON bodies (e.g. a platform 504 page) fall through to the general error.
+      const data = await response.json().catch(() => null);
+      if (response.ok && typeof data?.joke === "string") {
         setJoke(data.joke);
         setStatus("success");
+      } else if (response.status === 422) {
+        showError("noJoke");
       } else {
-        setJoke("");
-        setStatus("idle");
+        showError("general");
       }
-    } catch {
-      // Error messages are added in Milestone 3; fall back to the idle state.
-      setJoke("");
-      setStatus("idle");
     } finally {
       inFlight.current = false;
     }
@@ -83,7 +101,13 @@ export default function Home() {
         </form>
 
         <div aria-live="polite" className="mt-4 flex flex-col">
-          {isLoading ? <LoadingPill /> : <JokeBubble joke={joke} />}
+          {isLoading ? (
+            <LoadingPill />
+          ) : status === "error" ? (
+            <AlertMessage kind={errorKind} />
+          ) : (
+            <JokeBubble joke={joke} />
+          )}
         </div>
       </div>
     </main>
@@ -126,6 +150,64 @@ function JokeBubble({ joke }: { joke: string }) {
         {joke}
       </p>
     </div>
+  );
+}
+
+const ERROR_TEXT: Record<ErrorKind, string> = {
+  offline: UI_TEXT.offlineError,
+  noJoke: UI_TEXT.noJokeError,
+  general: UI_TEXT.generalError,
+};
+
+function AlertMessage({ kind }: { kind: ErrorKind }) {
+  const isOffline = kind === "offline";
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-[14px] border-[3px] border-ink p-4 text-start text-[18px] leading-7 ${
+        isOffline ? "bg-paper text-ink" : "bg-error-tint text-deep-red"
+      }`}
+    >
+      {isOffline ? <WifiOffIcon /> : <AlertIcon />}
+      <p>{ERROR_TEXT[kind]}</p>
+    </div>
+  );
+}
+
+function WifiOffIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-6 w-6 shrink-0"
+      fill="none"
+      strokeWidth="3"
+      strokeLinecap="round"
+    >
+      <g stroke="#111111">
+        <path d="M2 8.5a15 15 0 0 1 20 0" />
+        <path d="M5.5 12.5a10 10 0 0 1 13 0" />
+        <path d="M9 16.3a5 5 0 0 1 6 0" />
+        <path d="M12 20h.01" />
+      </g>
+      <path d="M3 3l18 18" stroke="#d7261e" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-6 w-6 shrink-0"
+      fill="none"
+      stroke="#9c1a14"
+      strokeWidth="3"
+      strokeLinecap="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 7v6M12 17h.01" />
+    </svg>
   );
 }
 
